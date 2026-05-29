@@ -205,7 +205,7 @@ elif utility_type == "💧 수도 요금 관리":
         st.info("입력된 수도 데이터가 없습니다.")
 
 # ==========================================
-# 📈 종합 통계 분석 섹션 (오류 수정 완료)
+# 📈 종합 통계 분석 섹션 (오류 완벽 해결됨)
 # ==========================================
 elif utility_type == "📈 종합 통계 분석":
     st.markdown("#### 📈 요금 및 사용량 시계열 분석")
@@ -215,21 +215,27 @@ elif utility_type == "📈 종합 통계 분석":
     if res_stats.data:
         df_stats = pd.DataFrame(res_stats.data)
         
-        cols_to_numeric = ['my_church_use', 'll_church_use', 'total_bill', 'water_church_use', 'll_water_bill']
-        for col in cols_to_numeric:
-            if col in df_stats.columns:
-                df_stats[col] = pd.to_numeric(df_stats[col], errors='coerce').fillna(0)
-            else:
-                df_stats[col] = 0
-                
-        df_stats.set_index('month', inplace=True)
+        # 💡 [핵심 해결 로직]
+        # Streamlit 그래프 에러를 막기 위해 숨겨진 타입 속성을 지우고 '순수 파이썬 리스트(목록)'로 추출
+        months = df_stats['month'].tolist()
+        
+        def get_clean_list(col_name):
+            if col_name in df_stats.columns:
+                return pd.to_numeric(df_stats[col_name], errors='coerce').fillna(0).tolist()
+            return [0] * len(months)
+            
+        total_bills = get_clean_list('total_bill')
+        my_church_uses = get_clean_list('my_church_use')
+        ll_church_uses = get_clean_list('ll_church_use')
+        ll_water_bills = get_clean_list('ll_water_bill')
+        water_church_uses = get_clean_list('water_church_use')
 
         tab_elec, tab_water = st.tabs(["⚡ 전기 통계", "💧 수도 통계"])
         
         # --- 전기 통계 ---
         with tab_elec:
-            avg_bill = df_stats['total_bill'].mean()
-            max_bill = df_stats['total_bill'].max()
+            avg_bill = sum(total_bills) / len(total_bills) if total_bills else 0
+            max_bill = max(total_bills) if total_bills else 0
             
             sc1, sc2 = st.columns(2)
             sc1.metric("월 평균 전기 요금", f"{safe_int(avg_bill):,} 원")
@@ -237,21 +243,25 @@ elif utility_type == "📈 종합 통계 분석":
             
             st.write("---")
             st.markdown("**📉 월별 전기 청구 요금 추이**")
-            # 수정됨: 2D DataFrame 형태로 전달 및 사용자 지정 색상 제거
-            st.line_chart(df_stats[['total_bill']], height=300)
+            
+            # 순수 데이터로만 이루어진 차트 전용 데이터프레임 생성
+            chart_df_elec_bill = pd.DataFrame({"전기 요금": total_bills}, index=months)
+            st.line_chart(chart_df_elec_bill, height=300)
             
             st.write("---")
             st.markdown("**⚖️ 사용량 교차 검증 (우리가 실측한 양 vs 집주인이 청구한 양)**")
             st.caption("막대그래프 높이가 다르면 청구서에 과다/과소 청구가 발생했다는 의미입니다.")
             
-            chart_df = df_stats[['my_church_use', 'll_church_use']].copy()
-            chart_df.columns = ["우리 실측 사용량", "집주인 청구 사용량"]
-            st.bar_chart(chart_df, height=350)
+            chart_df_elec_use = pd.DataFrame(
+                {"우리 실측 사용량": my_church_uses, "집주인 청구 사용량": ll_church_uses}, 
+                index=months
+            )
+            st.bar_chart(chart_df_elec_use, height=350)
             
         # --- 수도 통계 ---
         with tab_water:
-            avg_water = df_stats['ll_water_bill'].mean()
-            max_water = df_stats['ll_water_bill'].max()
+            avg_water = sum(ll_water_bills) / len(ll_water_bills) if ll_water_bills else 0
+            max_water = max(ll_water_bills) if ll_water_bills else 0
             
             sc3, sc4 = st.columns(2)
             sc3.metric("월 평균 수도 요금", f"{safe_int(avg_water):,} 원")
@@ -259,13 +269,15 @@ elif utility_type == "📈 종합 통계 분석":
             
             st.write("---")
             st.markdown("**📉 월별 수도 청구 요금 추이**")
-            # 수정됨: 2D DataFrame 형태로 전달 및 사용자 지정 색상 제거
-            st.line_chart(df_stats[['ll_water_bill']], height=300)
+            
+            chart_df_water_bill = pd.DataFrame({"수도 요금": ll_water_bills}, index=months)
+            st.line_chart(chart_df_water_bill, height=300)
             
             st.write("---")
             st.markdown("**📊 월별 수도 사용량 추이**")
-            # 수정됨: 2D DataFrame 형태로 전달 및 사용자 지정 색상 제거
-            st.bar_chart(df_stats[['water_church_use']], height=350)
+            
+            chart_df_water_use = pd.DataFrame({"수도 사용량": water_church_uses}, index=months)
+            st.bar_chart(chart_df_water_use, height=350)
             
     else:
         st.info("통계를 분석할 데이터가 아직 없습니다. 데이터를 먼저 입력해 주세요.")
