@@ -57,7 +57,7 @@ prev_f, prev_g, prev_w_f = get_previous_readings(target_month)
 
 st.write("")
 
-# --- 핵심: 배너 스위치 (통계 분석 추가) ---
+# --- 핵심: 배너 스위치 ---
 utility_type = st.radio(
     "관리 항목 선택", 
     ["⚡ 전기 요금 관리", "💧 수도 요금 관리", "📈 종합 통계 분석"], 
@@ -67,7 +67,7 @@ utility_type = st.radio(
 st.write("") 
 
 # ==========================================
-# ⚡ 전기 요금 관리 섹션 (기존 기능 100% 유지)
+# ⚡ 전기 요금 관리 섹션
 # ==========================================
 if utility_type == "⚡ 전기 요금 관리":
     st.markdown("#### 📊 이번 달 전기 요약")
@@ -147,7 +147,7 @@ if utility_type == "⚡ 전기 요금 관리":
         st.info("입력된 전기 데이터가 없습니다.")
 
 # ==========================================
-# 💧 수도 요금 관리 섹션 (기존 기능 100% 유지)
+# 💧 수도 요금 관리 섹션
 # ==========================================
 elif utility_type == "💧 수도 요금 관리":
     st.markdown("#### 📊 이번 달 수도 요약")
@@ -205,18 +205,16 @@ elif utility_type == "💧 수도 요금 관리":
         st.info("입력된 수도 데이터가 없습니다.")
 
 # ==========================================
-# 📈 종합 통계 분석 섹션 (신규 기능)
+# 📈 종합 통계 분석 섹션 (오류 수정 완료)
 # ==========================================
 elif utility_type == "📈 종합 통계 분석":
     st.markdown("#### 📈 요금 및 사용량 시계열 분석")
     
-    # 통계용 전체 데이터 불러오기 (과거순 정렬)
     res_stats = supabase.table("utility_records").select("*").order("month", ascending=True).execute()
     
     if res_stats.data:
         df_stats = pd.DataFrame(res_stats.data)
         
-        # 숫자형 변환 처리 (에러 방지)
         cols_to_numeric = ['my_church_use', 'll_church_use', 'total_bill', 'water_church_use', 'll_water_bill']
         for col in cols_to_numeric:
             if col in df_stats.columns:
@@ -224,7 +222,6 @@ elif utility_type == "📈 종합 통계 분석":
             else:
                 df_stats[col] = 0
                 
-        # 인덱스를 검침월로 설정 (그래프 x축 활용)
         df_stats.set_index('month', inplace=True)
 
         tab_elec, tab_water = st.tabs(["⚡ 전기 통계", "💧 수도 통계"])
@@ -240,7 +237,8 @@ elif utility_type == "📈 종합 통계 분석":
             
             st.write("---")
             st.markdown("**📉 월별 전기 청구 요금 추이**")
-            st.line_chart(df_stats['total_bill'], color="#ffaa00", height=300)
+            # 수정됨: 2D DataFrame 형태로 전달 및 사용자 지정 색상 제거
+            st.line_chart(df_stats[['total_bill']], height=300)
             
             st.write("---")
             st.markdown("**⚖️ 사용량 교차 검증 (우리가 실측한 양 vs 집주인이 청구한 양)**")
@@ -248,7 +246,6 @@ elif utility_type == "📈 종합 통계 분석":
             
             chart_df = df_stats[['my_church_use', 'll_church_use']].copy()
             chart_df.columns = ["우리 실측 사용량", "집주인 청구 사용량"]
-            # 두 막대를 겹치지 않고 나란히 배치하기 위해 st.bar_chart 활용
             st.bar_chart(chart_df, height=350)
             
         # --- 수도 통계 ---
@@ -262,11 +259,13 @@ elif utility_type == "📈 종합 통계 분석":
             
             st.write("---")
             st.markdown("**📉 월별 수도 청구 요금 추이**")
-            st.line_chart(df_stats['ll_water_bill'], color="#00a3e0", height=300)
+            # 수정됨: 2D DataFrame 형태로 전달 및 사용자 지정 색상 제거
+            st.line_chart(df_stats[['ll_water_bill']], height=300)
             
             st.write("---")
             st.markdown("**📊 월별 수도 사용량 추이**")
-            st.bar_chart(df_stats['water_church_use'], color="#00a3e0", height=350)
+            # 수정됨: 2D DataFrame 형태로 전달 및 사용자 지정 색상 제거
+            st.bar_chart(df_stats[['water_church_use']], height=350)
             
     else:
         st.info("통계를 분석할 데이터가 아직 없습니다. 데이터를 먼저 입력해 주세요.")
